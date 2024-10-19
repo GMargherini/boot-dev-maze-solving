@@ -3,7 +3,7 @@ from point import Point
 import time, random
 
 class Maze:
-    def __init__(self, p1, rows, cols, cell_size_x, cell_size_y, win = None, seed=None):
+    def __init__(self, rows, cols, cell_size_x, cell_size_y, win = None, p1 = Point(10,10), seed=None):
         self.p1 = p1
         self.rows = rows
         self.cols = cols
@@ -14,11 +14,12 @@ class Maze:
         self._break_entrance_and_exit()
         self.seed = seed
         self._break_walls_r(0,0)
+        #self._break_walls_i()
         self._reset_cells_visited()
 
     def _create_cells(self):
         start = [Point(i, j) for i in range(self.p1.x, self.cell_size_x*self.cols, self.cell_size_x) for j in range(self.p1.y, self.cell_size_y*self.rows, self.cell_size_y)]
-        self.cells = [[Cell(p, Point(p.x + self.cell_size_x, p.y + self.cell_size_y), self.win) for p in start[0+i*self.rows:self.rows+i*self.rows]] for i in range(0, self.cols)]
+        self.cells = [[Cell(p, Point(p.x + self.cell_size_x, p.y + self.cell_size_y), i, int(p.y/self.cell_size_y), self.win) for p in start[0+i*self.rows:self.rows+i*self.rows]] for i in range(0, self.cols)]
         for rows in self.cells:
             for c in rows:
                 self._draw_cell(c)
@@ -30,7 +31,7 @@ class Maze:
 
     def _animate(self):
         self.win.redraw()
-        time.sleep(0.05)
+        time.sleep(0.005)
 
     def _break_entrance_and_exit(self):
         self.cells[0][0].walls["north"] = False
@@ -38,19 +39,50 @@ class Maze:
         self.cells[self.cols-1][self.rows-1].walls["south"] = False
         self._draw_cell(self.cells[self.cols-1][self.rows-1])
 
+
+    def _break_walls_i(self):
+        r = random.seed(self.seed)
+        to_visit = []
+        to_visit = [self.cells[i][j] for i in range(0,self.cols) for j in range(0,self.rows)]
+        random.shuffle(to_visit)
+        print(len(to_visit))
+        for here in to_visit:
+            print()
+            adjacient = []
+            i = int(here.p1.x/(self.cell_size_x))
+            j = int(here.p1.y/(self.cell_size_y))
+
+            if i != 0 and not self.cells[i-1][j].visited:
+                adjacient.append(self.cells[i-1][j])
+            if j != 0 and not self.cells[i][j-1].visited:
+                adjacient.append(self.cells[i][j-1])
+            if i+1 != self.cols and not self.cells[i+1][j].visited:
+                adjacient.append(self.cells[i+1][j])
+            if j+1 != self.rows and not self.cells[i][j+1].visited:
+                adjacient.append(self.cells[i][j+1])
+            
+            print(here)
+            print(adjacient)
+            if adjacient != []:
+                new_cell = random.choice(adjacient)
+                print(new_cell)
+                here.break_wall(new_cell)
+                here.visited = True
+            self._draw_cell(here)
+
+
     def _break_walls_r(self, i, j):
         here = self.cells[i][j]
-        print(here)
         here.visited = True
         while True:
             to_visit = []
-            if i != 0 and not (self.cells[i-1][j] == None) and not self.cells[i-1][j].visited:
+            if i != 0 and not self.cells[i-1][j].visited:
                 to_visit.append((i-1,j))
-            if j != 0 and not (self.cells[i][j-1] == None) and not self.cells[i][j-1].visited:
+            if j != 0 and not self.cells[i][j-1].visited:
                 to_visit.append((i,j-1))
-            if i+1 != self.cols and not (self.cells[i+1][j] == None) and not self.cells[i+1][j].visited:
+            if i+1 != self.cols and not self.cells[i+1][j].visited:
                 to_visit.append((i+1,j))
-            if j+1 != self.rows and not (self.cells[i][j+1] == None) and not self.cells[i][j+1].visited:
+            if j+1 != self.rows and not self.cells[i][j+1].visited:
                 to_visit.append((i,j+1))
 
             if to_visit == []:
@@ -60,18 +92,7 @@ class Maze:
                 r = random.seed(self.seed)
                 indexes = random.choice(to_visit)
                 new_cell = self.cells[indexes[0]][indexes[1]]
-                if new_cell.center.x > here.center.x:
-                    here.walls["east"] = False
-                    new_cell.walls["west"] = False
-                elif new_cell.center.x < here.center.x:
-                    new_cell.walls["east"] = False
-                    here.walls["west"] = False
-                elif new_cell.center.y > here.center.y:
-                    here.walls["south"] = False
-                    new_cell.walls["north"] = False
-                elif new_cell.center.y < here.center.y:
-                    new_cell.walls["south"] = False
-                    here.walls["north"] = False
+                here.break_wall(new_cell)
                 self._break_walls_r(indexes[0], indexes[1])
     
     def _reset_cells_visited(self):
